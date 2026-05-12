@@ -52,7 +52,9 @@ void VehiclePhysics::Update(float dt, const VehicleInputState& input)
     body_.Integrate(dt);
 
     ClampSpeed();
-    ClampToBounds();
+    if (enableBoundaryClamp_) {
+        ClampToBounds();
+    }
 
     // 地面貫通防止: y 座標が地面 + ホイール半径以下になった場合の補正
     float minY = config_.wheelRadius + config_.suspensionRestLength * 0.3f;

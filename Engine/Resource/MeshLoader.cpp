@@ -88,6 +88,18 @@ bool MeshLoader::LoadMesh(const std::string& filepath, MeshResource& outMesh) {
     return UploadToGPU(vertices, indices, outMesh);
 }
 
+bool MeshLoader::CreateMesh(const std::vector<Vertex>& vertices,
+                             const std::vector<uint32_t>& indices,
+                             MeshResource& outMesh)
+{
+    if (vertices.empty() || indices.empty()) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "CreateMesh: empty vertices or indices");
+        return false;
+    }
+    return UploadToGPU(vertices, indices, outMesh);
+}
+
 bool MeshLoader::UploadToGPU(const std::vector<Vertex>& vertices,
                               const std::vector<uint32_t>& indices,
                               MeshResource& outMesh)

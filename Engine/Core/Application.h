@@ -15,6 +15,10 @@
 
 #include "../../Game/Vehicle/VehicleController.h"
 #include "../../Game/Camera/ChaseCameraController.h"
+#include "../../Game/Course/CourseData.h"
+#include "../../Game/Course/CourseCollider.h"
+#include "../../Game/Course/CheckpointSystem.h"
+#include "../../Game/Course/LapTimer.h"
 
 namespace Revora {
 
@@ -57,8 +61,15 @@ private:
     // --- 車両 ---
     VehicleController vehicle_;
 
+    // --- コース ---
+    CourseData       courseData_;
+    CourseCollider   courseCollider_;
+    CheckpointSystem checkpointSystem_;
+    LapTimer         lapTimer_;
+
     // --- リソース ---
     MeshResource    cubeMesh_      = {};
+    MeshResource    courseMesh_    = {};
     TextureResource checkerTex_    = {};
     TextureResource skyboxCubemap_ = {};
 

@@ -55,6 +55,10 @@ public:
     /// ホイール状態の取得
     const std::array<WheelState, kWheelCount>& GetWheelStates() const { return wheels_; }
 
+    /// 矩形境界クランプの有効/無効を切り替える
+    /// コースシステム使用時は CourseCollider が境界管理するため無効にする
+    void SetBoundaryClampEnabled(bool enabled) { enableBoundaryClamp_ = enabled; }
+
     /// スポーン位置にリセットする
     void Reset();
 
@@ -87,7 +91,8 @@ private:
     std::array<Vector3, kWheelCount>    wheelLocalOffsets_;
     std::array<WheelState, kWheelCount> wheels_;
 
-    float currentSteerAngle_ = 0.0f;
+    float currentSteerAngle_   = 0.0f;
+    bool  enableBoundaryClamp_ = true;
 
     static constexpr float kArenaHalfExtent = 50.0f;
 };

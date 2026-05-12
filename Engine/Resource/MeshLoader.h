@@ -33,6 +33,12 @@ public:
     /// モデルファイルを読み込み、GPU バッファを生成する
     bool LoadMesh(const std::string& filepath, MeshResource& outMesh);
 
+    /// CPU 側の頂点/インデックスデータから GPU メッシュを生成する
+    /// プロシージャルメッシュ (コース路面など) の生成に使用する
+    bool CreateMesh(const std::vector<Vertex>& vertices,
+                    const std::vector<uint32_t>& indices,
+                    MeshResource& outMesh);
+
     /// メッシュリソースを解放する
     void DestroyMesh(MeshResource& mesh);
 

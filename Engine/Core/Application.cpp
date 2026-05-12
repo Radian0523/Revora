@@ -1,8 +1,11 @@
 #include "Application.h"
 #include "../Math/MathConstants.h"
 #include "../Math/Matrix4x4.h"
+#include "../../Game/Course/CourseMeshGenerator.h"
 
 #include <SDL.h>
+
+#include <cmath>
 
 namespace Revora {
 
@@ -11,10 +14,6 @@ static constexpr float kMaxFrameTime   = 0.25f;
 
 // ディスクリプタセット数: MeshRenderer (2 フレーム) + Skybox (2 フレーム)
 static constexpr uint32_t kMaxDescriptorSets = 16;
-
-// 地面メッシュのスケーリング (Cube.obj を薄く広げて平面に見立てる)
-static constexpr float kGroundScaleXZ = 50.0f;
-static constexpr float kGroundScaleY  = 0.05f;
 
 bool Application::Initialize()
 {
@@ -94,15 +93,60 @@ bool Application::Initialize()
         return false;
     }
 
+    // --- コース読み込み ---
+    if (!courseData_.LoadFromFile("Assets/Data/DefaultCourse.json")) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load course data");
+        Shutdown();
+        return false;
+    }
+    courseData_.BuildSpline();
+
+    // コースメッシュのプロシージャル生成
+    {
+        std::vector<Vertex> courseVertices;
+        std::vector<uint32_t> courseIndices;
+        CourseMeshGenerator::Generate(
+            courseData_.GetSpline(), courseData_.trackWidth,
+            courseVertices, courseIndices);
+
+        if (!meshLoader_.CreateMesh(courseVertices, courseIndices, courseMesh_)) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create course mesh");
+            Shutdown();
+            return false;
+        }
+        SDL_Log("Course mesh created: %zu vertices, %zu indices",
+                courseVertices.size(), courseIndices.size());
+    }
+
+    // --- コースシステム初期化 ---
+    courseCollider_.Initialize(&courseData_.GetSpline(), courseData_.trackWidth);
+
+    checkpointSystem_.Initialize(
+        &courseData_.GetSpline(),
+        courseData_.checkpointPositions,
+        courseData_.lapCount);
+
+    lapTimer_.Initialize(courseData_.lapCount);
+
     // --- 車両初期化 ---
     VehicleConfig vehicleConfig;
     vehicleConfig.LoadFromFile("Assets/Data/DefaultVehicle.json");
+
+    // スポーン位置をコース上に設定
+    Vector3 spawnPos = courseData_.GetSpline().Evaluate(courseData_.spawnT);
+    Vector3 spawnDir = courseData_.GetSpline().EvaluateTangent(courseData_.spawnT);
+    spawnPos.y = 0.5f;  // 地面からの高さ
+    vehicleConfig.spawnPosition = spawnPos;
+    vehicleConfig.spawnYaw = std::atan2(spawnDir.x, spawnDir.z);
 
     if (!vehicle_.Initialize(vehicleConfig)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to initialize vehicle");
         Shutdown();
         return false;
     }
+
+    // コース境界拘束を車両に設定
+    vehicle_.SetCourseCollider(&courseCollider_);
 
     // --- カメラ初期化 ---
     chaseCam_.Initialize(camera_);
@@ -143,6 +187,12 @@ void Application::Run()
             break;
         }
 
+        // R キーでリセット (ラップ/タイマーも含む)
+        if (input_.IsKeyPressed(SDL_SCANCODE_R)) {
+            checkpointSystem_.Reset();
+            lapTimer_.Reset();
+        }
+
         // 固定タイムステップ更新
         accumulator += frameTime;
         while (accumulator >= kFixedTimeStep) {
@@ -162,6 +212,7 @@ void Application::Shutdown()
 
     textureLoader_.DestroyTexture(skyboxCubemap_);
     textureLoader_.DestroyTexture(checkerTex_);
+    meshLoader_.DestroyMesh(courseMesh_);
     meshLoader_.DestroyMesh(cubeMesh_);
 
     skybox_.Shutdown();
@@ -176,11 +227,26 @@ void Application::Shutdown()
 
 void Application::FixedUpdate(float dt)
 {
-    // 車両更新 (入力 → 物理シミュレーション)
+    // 車両更新 (入力 → 物理シミュレーション → コース境界拘束)
     vehicle_.Update(input_, dt);
 
-    // 追従カメラ更新
+    // チェックポイント/ラップ判定
     const RigidBody& body = vehicle_.GetPhysics().GetBody();
+
+    int prevLap = checkpointSystem_.GetCurrentLap();
+    checkpointSystem_.Update(body.position);
+
+    // ラップ完了時にタイムを記録
+    if (checkpointSystem_.GetCurrentLap() > prevLap) {
+        lapTimer_.RecordLap();
+    }
+
+    // レース未完了ならタイマーを進める
+    if (!checkpointSystem_.IsRaceFinished()) {
+        lapTimer_.Update(dt);
+    }
+
+    // 追従カメラ更新
     chaseCam_.Update(
         body.position,
         body.rotation,
@@ -210,9 +276,9 @@ void Application::Render()
     float lightDir[3] = {0.5f, 1.0f, 0.3f};
     meshRenderer_.UpdateSceneData(frameIndex, view, proj, lightDir);
 
-    // 地面: Cube.obj を薄く伸ばして平面に見立てる
-    Matrix4x4 groundModel = Matrix4x4::Scaling(kGroundScaleXZ, kGroundScaleY, kGroundScaleXZ);
-    meshRenderer_.Draw(cmd, frameIndex, cubeMesh_, checkerTex_, groundModel);
+    // コース路面: プロシージャル生成したメッシュをそのまま描画
+    Matrix4x4 courseModel = Matrix4x4::Identity();
+    meshRenderer_.Draw(cmd, frameIndex, courseMesh_, checkerTex_, courseModel);
 
     // 車両: 剛体の位置と回転からモデル行列を構築
     const RigidBody& body = vehicle_.GetPhysics().GetBody();

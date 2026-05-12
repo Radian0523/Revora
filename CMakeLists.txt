@@ -59,6 +59,7 @@ set(ENGINE_SOURCES
     Engine/Math/Vector3.cpp
     Engine/Math/Matrix4x4.cpp
     Engine/Math/Quaternion.cpp
+    Engine/Math/CatmullRomSpline.cpp
     Engine/Platform/Window.cpp
     Engine/Core/Timer.cpp
     Engine/Core/Application.cpp
@@ -87,6 +88,7 @@ set(ENGINE_HEADERS
     Engine/Math/Vector3.h
     Engine/Math/Matrix4x4.h
     Engine/Math/Quaternion.h
+    Engine/Math/CatmullRomSpline.h
     Engine/Platform/Window.h
     Engine/Core/Timer.h
     Engine/Core/Application.h
@@ -140,12 +142,22 @@ set(GAME_SOURCES
     Game/Vehicle/VehicleInputMapper.cpp
     Game/Vehicle/VehicleController.cpp
     Game/Camera/ChaseCameraController.cpp
+    Game/Course/CourseData.cpp
+    Game/Course/CourseMeshGenerator.cpp
+    Game/Course/CourseCollider.cpp
+    Game/Course/CheckpointSystem.cpp
+    Game/Course/LapTimer.cpp
 )
 
 set(GAME_HEADERS
     Game/Vehicle/VehicleInputMapper.h
     Game/Vehicle/VehicleController.h
     Game/Camera/ChaseCameraController.h
+    Game/Course/CourseData.h
+    Game/Course/CourseMeshGenerator.h
+    Game/Course/CourseCollider.h
+    Game/Course/CheckpointSystem.h
+    Game/Course/LapTimer.h
 )
 
 # --- Game 実行バイナリ ---
