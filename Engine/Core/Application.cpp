@@ -6,7 +6,10 @@ namespace Revora {
 
 static constexpr float kFixedTimeStep  = 1.0f / 60.0f;
 static constexpr float kMaxFrameTime   = 0.25f;
-static constexpr float kRotationSpeed  = 1.0f;  // rad/s
+static constexpr float kRotationSpeed  = 0.5f;  // rad/s
+
+// ディスクリプタセット数: MeshRenderer (2 フレーム) + Skybox (2 フレーム)
+static constexpr uint32_t kMaxDescriptorSets = 16;
 
 bool Application::Initialize() {
     WindowDesc desc;
@@ -26,6 +29,72 @@ bool Application::Initialize() {
         window_.Shutdown();
         return false;
     }
+
+    // --- 描画システム初期化 ---
+    VkDevice device               = graphics_.GetDevice();
+    VkPhysicalDevice physDevice   = graphics_.GetPhysicalDevice();
+    VkRenderPass renderPass       = graphics_.GetRenderPass();
+    VkCommandPool commandPool     = graphics_.GetCommandPool();
+    VkQueue graphicsQueue         = graphics_.GetGraphicsQueue();
+
+    shaderMgr_.Initialize(device);
+
+    if (!descriptorMgr_.Initialize(device, kMaxDescriptorSets)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to initialize DescriptorSetManager");
+        Shutdown();
+        return false;
+    }
+
+    if (!meshRenderer_.Initialize(device, physDevice, renderPass, descriptorMgr_, shaderMgr_)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to initialize MeshRenderer");
+        Shutdown();
+        return false;
+    }
+
+    if (!skybox_.Initialize(device, physDevice, renderPass, descriptorMgr_, shaderMgr_)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to initialize Skybox");
+        Shutdown();
+        return false;
+    }
+
+    // --- リソースローダー初期化 ---
+    meshLoader_.Initialize(device, physDevice, commandPool, graphicsQueue);
+    textureLoader_.Initialize(device, physDevice, commandPool, graphicsQueue);
+
+    // --- テストリソース読み込み ---
+    if (!meshLoader_.LoadMesh("Assets/Models/Cube.obj", testMesh_)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load test mesh");
+        Shutdown();
+        return false;
+    }
+
+    if (!textureLoader_.LoadTexture2D("Assets/Textures/Checkerboard.png", testTexture_)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load test texture");
+        Shutdown();
+        return false;
+    }
+
+    std::string skyboxFaces[6] = {
+        "Assets/Textures/Skybox/right.png",
+        "Assets/Textures/Skybox/left.png",
+        "Assets/Textures/Skybox/top.png",
+        "Assets/Textures/Skybox/bottom.png",
+        "Assets/Textures/Skybox/front.png",
+        "Assets/Textures/Skybox/back.png",
+    };
+    if (!textureLoader_.LoadCubemap(skyboxFaces, skyboxCubemap_)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load skybox cubemap");
+        Shutdown();
+        return false;
+    }
+
+    // --- カメラ初期化 ---
+    camera_.SetPosition(Vector3(0.0f, 1.0f, -3.0f));
+    camera_.SetRotation(0.0f, 0.0f);
+    cameraController_.Initialize(camera_);
+
+    // 相対マウスモードを有効化 (カーソル非表示 + マウスキャプチャ)
+    input_.SetRelativeMouseMode(true);
 
     timer_.Initialize();
     running_ = true;
@@ -71,44 +140,59 @@ void Application::Run() {
 }
 
 void Application::Shutdown() {
+    if (graphics_.GetDevice() != VK_NULL_HANDLE) {
+        vkDeviceWaitIdle(graphics_.GetDevice());
+    }
+
+    textureLoader_.DestroyTexture(skyboxCubemap_);
+    textureLoader_.DestroyTexture(testTexture_);
+    meshLoader_.DestroyMesh(testMesh_);
+
+    skybox_.Shutdown();
+    meshRenderer_.Shutdown();
+    descriptorMgr_.Shutdown();
+    shaderMgr_.Shutdown();
+
     input_.Shutdown();
     graphics_.Shutdown();
     window_.Shutdown();
 }
 
 void Application::FixedUpdate(float dt) {
-    triangleRotation_ += kRotationSpeed * dt;
-
-    // 2pi を超えたら巻き戻す
-    if (triangleRotation_ > kTwoPi) {
-        triangleRotation_ -= kTwoPi;
+    // テストメッシュを緩やかに回転
+    meshRotation_ += kRotationSpeed * dt;
+    if (meshRotation_ > kTwoPi) {
+        meshRotation_ -= kTwoPi;
     }
+
+    // カメラ操作
+    cameraController_.Update(input_, dt);
 }
 
 void Application::Render() {
-    // 暗い紺色の背景
     graphics_.BeginFrame(0.05f, 0.05f, 0.15f, 1.0f);
 
-    // MVP 行列を構築
-    float aspect = static_cast<float>(window_.GetWidth()) / static_cast<float>(window_.GetHeight());
+    uint32_t frameIndex = graphics_.GetCurrentFrame();
+    VkCommandBuffer cmd = graphics_.GetCurrentCommandBuffer();
 
-    Matrix4x4 model = Matrix4x4::RotationY(triangleRotation_);
-    Matrix4x4 view  = Matrix4x4::LookAtLH(
-        Vector3(0.0f, 0.0f, -2.0f),  // カメラ位置
-        Vector3(0.0f, 0.0f, 0.0f),   // 注視点
-        Vector3::Up
-    );
-    Matrix4x4 proj  = Matrix4x4::PerspectiveFovLH(
-        kPi / 4.0f,   // 45度
-        aspect,
-        0.1f,
-        100.0f
-    );
+    float aspect = static_cast<float>(window_.GetWidth())
+                 / static_cast<float>(window_.GetHeight());
 
-    // 行ベクトル方式: v' = v * M * V * P
-    Matrix4x4 mvp = model * view * proj;
+    Matrix4x4 view = camera_.GetViewMatrix();
+    Matrix4x4 proj = camera_.GetProjectionMatrix(aspect);
 
-    graphics_.DrawTestTriangle(mvp);
+    // --- スカイボックス描画 (メッシュの前に描画、デプス書き込み無効) ---
+    skybox_.UpdateSceneData(frameIndex, view, proj);
+    skybox_.Draw(cmd, frameIndex, skyboxCubemap_);
+
+    // --- メッシュ描画 ---
+    // Lambert ライティング用の光源方向 (太陽光: 斜め上方から)
+    float lightDir[3] = {0.5f, 1.0f, 0.3f};
+    meshRenderer_.UpdateSceneData(frameIndex, view, proj, lightDir);
+
+    Matrix4x4 modelMatrix = Matrix4x4::RotationY(meshRotation_);
+    meshRenderer_.Draw(cmd, frameIndex, testMesh_, testTexture_, modelMatrix);
+
     graphics_.EndFrame();
 }
 

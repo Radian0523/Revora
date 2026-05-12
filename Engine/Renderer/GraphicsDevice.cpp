@@ -198,7 +198,10 @@ bool GraphicsDevice::CreateInstance(const Window& window) {
         if (std::strcmp(ext.extensionName, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) == 0) {
             extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
             instanceFlags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-            break;
+        }
+        // portability_subset デバイス拡張が依存するインスタンス拡張
+        if (std::strcmp(ext.extensionName, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME) == 0) {
+            extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
         }
     }
 
@@ -316,17 +319,25 @@ bool GraphicsDevice::CreateLogicalDevice() {
     std::vector<const char*> deviceExtensions;
     deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-    // MoltenVK 対応: portability_subset 拡張を有効化 (存在する場合)
+    // MoltenVK 対応: portability_subset とその依存拡張を有効化
     uint32_t extCount = 0;
     vkEnumerateDeviceExtensionProperties(physicalDevice_, nullptr, &extCount, nullptr);
     std::vector<VkExtensionProperties> availableExtensions(extCount);
     vkEnumerateDeviceExtensionProperties(physicalDevice_, nullptr, &extCount, availableExtensions.data());
 
+    bool hasPortabilitySubset = false;
+    bool hasGetPhysDevProps2  = false;
     for (const auto& ext : availableExtensions) {
         if (std::strcmp(ext.extensionName, "VK_KHR_portability_subset") == 0) {
-            deviceExtensions.push_back("VK_KHR_portability_subset");
-            break;
+            hasPortabilitySubset = true;
         }
+        if (std::strcmp(ext.extensionName, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME) == 0) {
+            hasGetPhysDevProps2 = true;
+        }
+    }
+
+    if (hasPortabilitySubset) {
+        deviceExtensions.push_back("VK_KHR_portability_subset");
     }
 
     VkDeviceCreateInfo createInfo = {};

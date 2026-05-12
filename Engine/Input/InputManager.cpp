@@ -22,6 +22,11 @@ bool InputManager::Initialize() {
 }
 
 void InputManager::Shutdown() {
+    if (relativeMouseMode_) {
+        SDL_SetRelativeMouseMode(SDL_FALSE);
+        relativeMouseMode_ = false;
+    }
+
     if (controller_) {
         SDL_GameControllerClose(controller_);
         controller_ = nullptr;
@@ -32,6 +37,12 @@ void InputManager::Shutdown() {
 void InputManager::Update() {
     // 前フレームのキー状態を保存 (押下検出用)
     std::memcpy(previousKeys_, keyboardState_, numKeys_);
+
+    // マウスの相対移動量を取得
+    int mx, my;
+    SDL_GetRelativeMouseState(&mx, &my);
+    mouseDeltaX_ = static_cast<float>(mx);
+    mouseDeltaY_ = static_cast<float>(my);
 
     // ゲームパッドが未接続なら再検出を試みる
     if (!controller_) {
@@ -70,6 +81,16 @@ bool InputManager::IsKeyPressed(int scancode) const {
         return false;
     }
     return keyboardState_[scancode] != 0 && previousKeys_[scancode] == 0;
+}
+
+void InputManager::GetMouseDelta(float& dx, float& dy) const {
+    dx = mouseDeltaX_;
+    dy = mouseDeltaY_;
+}
+
+void InputManager::SetRelativeMouseMode(bool enable) {
+    SDL_SetRelativeMouseMode(enable ? SDL_TRUE : SDL_FALSE);
+    relativeMouseMode_ = enable;
 }
 
 void InputManager::DetectGamepad() {

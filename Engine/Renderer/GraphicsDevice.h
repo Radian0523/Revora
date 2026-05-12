@@ -23,8 +23,20 @@ public:
     void BeginFrame(float r, float g, float b, float a);
     void EndFrame();
 
-    /// テスト三角形の描画
+    /// テスト三角形の描画 (Phase 1 用、Phase 2 完了後に除去)
     void DrawTestTriangle(const Matrix4x4& mvp);
+
+    // --- 他のシステムが必要とする Vulkan ハンドルのアクセサ ---
+    VkDevice         GetDevice()         const { return device_; }
+    VkPhysicalDevice GetPhysicalDevice() const { return physicalDevice_; }
+    VkQueue          GetGraphicsQueue()  const { return graphicsQueue_; }
+    VkCommandPool    GetCommandPool()    const { return commandPool_; }
+    VkRenderPass     GetRenderPass()     const { return renderPass_; }
+    VkExtent2D       GetSwapChainExtent() const { return swapChainExtent_; }
+    uint32_t         GetCurrentFrame()   const { return currentFrame_; }
+    VkCommandBuffer  GetCurrentCommandBuffer() const { return commandBuffers_[currentFrame_]; }
+
+    static constexpr uint32_t GetMaxFramesInFlight() { return kMaxFramesInFlight; }
 
 private:
     // --- 初期化/解放メソッド (生成順に定義) ---

@@ -37,6 +37,14 @@ public:
 
     const GamepadState& GetGamepadState() const { return gamepad_; }
 
+    /// マウスの相対移動量を取得する (ピクセル単位)
+    void GetMouseDelta(float& dx, float& dy) const;
+
+    /// 相対マウスモードの有効/無効切り替え
+    /// 有効にするとカーソルが非表示になり、マウス移動が相対座標で取得される
+    void SetRelativeMouseMode(bool enable);
+    bool IsRelativeMouseMode() const { return relativeMouseMode_; }
+
 private:
     static constexpr int kMaxKeys = 512;
 
@@ -48,6 +56,10 @@ private:
 
     SDL_GameController* controller_        = nullptr;
     GamepadState        gamepad_;
+
+    float mouseDeltaX_ = 0.0f;
+    float mouseDeltaY_ = 0.0f;
+    bool  relativeMouseMode_ = false;
 };
 
 } // namespace Revora

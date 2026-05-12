@@ -10,6 +10,9 @@ find_package(SDL2 REQUIRED)
 # --- Vulkan 検出 ---
 find_package(Vulkan REQUIRED)
 
+# --- Assimp 検出 ---
+find_package(assimp REQUIRED)
+
 # --- SPIR-V シェーダーコンパイル ---
 # glslc を検索 (Vulkan SDK に同梱)
 find_program(GLSLC_EXECUTABLE glslc HINTS
@@ -27,6 +30,10 @@ file(MAKE_DIRECTORY ${SHADER_OUTPUT_DIR})
 set(SHADER_SOURCES
     "${SHADER_SOURCE_DIR}/Triangle.vert"
     "${SHADER_SOURCE_DIR}/Triangle.frag"
+    "${SHADER_SOURCE_DIR}/Mesh.vert"
+    "${SHADER_SOURCE_DIR}/Mesh.frag"
+    "${SHADER_SOURCE_DIR}/Skybox.vert"
+    "${SHADER_SOURCE_DIR}/Skybox.frag"
 )
 
 set(SHADER_SPIRV_OUTPUTS "")
@@ -53,6 +60,18 @@ set(ENGINE_SOURCES
     Engine/Core/Timer.cpp
     Engine/Core/Application.cpp
     Engine/Renderer/GraphicsDevice.cpp
+    Engine/Renderer/VulkanHelpers.cpp
+    Engine/Renderer/Vertex.cpp
+    Engine/Renderer/ShaderManager.cpp
+    Engine/Renderer/PipelineBuilder.cpp
+    Engine/Renderer/DescriptorSetManager.cpp
+    Engine/Renderer/MeshRenderer.cpp
+    Engine/Renderer/Camera.cpp
+    Engine/Renderer/DebugCameraController.cpp
+    Engine/Renderer/Skybox.cpp
+    Engine/Resource/StbImage.cpp
+    Engine/Resource/TextureLoader.cpp
+    Engine/Resource/MeshLoader.cpp
     Engine/Input/InputManager.cpp
 )
 
@@ -65,6 +84,17 @@ set(ENGINE_HEADERS
     Engine/Core/Timer.h
     Engine/Core/Application.h
     Engine/Renderer/GraphicsDevice.h
+    Engine/Renderer/VulkanHelpers.h
+    Engine/Renderer/Vertex.h
+    Engine/Renderer/ShaderManager.h
+    Engine/Renderer/PipelineBuilder.h
+    Engine/Renderer/DescriptorSetManager.h
+    Engine/Renderer/MeshRenderer.h
+    Engine/Renderer/Camera.h
+    Engine/Renderer/DebugCameraController.h
+    Engine/Renderer/Skybox.h
+    Engine/Resource/TextureLoader.h
+    Engine/Resource/MeshLoader.h
     Engine/Input/InputManager.h
 )
 
@@ -75,10 +105,16 @@ target_include_directories(Engine
     PRIVATE ${SDL2_INCLUDE_DIRS}
 )
 
+# stb ヘッダーのインクルードパス (Engine/Resource から "stb_image.h" でインクルード)
+target_include_directories(Engine PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/stb"
+)
+
 target_link_libraries(Engine
     PUBLIC
         ${SDL2_LIBRARIES}
         Vulkan::Vulkan
+        assimp::assimp
 )
 
 # Debug ビルドで Vulkan バリデーションレイヤーを有効化
