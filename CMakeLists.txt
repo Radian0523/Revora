@@ -13,6 +13,9 @@ find_package(Vulkan REQUIRED)
 # --- Assimp 検出 ---
 find_package(assimp REQUIRED)
 
+# --- nlohmann/json 検出 ---
+find_package(nlohmann_json REQUIRED)
+
 # --- SPIR-V シェーダーコンパイル ---
 # glslc を検索 (Vulkan SDK に同梱)
 find_program(GLSLC_EXECUTABLE glslc HINTS
@@ -73,6 +76,10 @@ set(ENGINE_SOURCES
     Engine/Resource/TextureLoader.cpp
     Engine/Resource/MeshLoader.cpp
     Engine/Input/InputManager.cpp
+    Engine/Physics/Collision.cpp
+    Engine/Physics/VehicleConfig.cpp
+    Engine/Physics/RigidBody.cpp
+    Engine/Physics/VehiclePhysics.cpp
 )
 
 set(ENGINE_HEADERS
@@ -96,6 +103,10 @@ set(ENGINE_HEADERS
     Engine/Resource/TextureLoader.h
     Engine/Resource/MeshLoader.h
     Engine/Input/InputManager.h
+    Engine/Physics/Collision.h
+    Engine/Physics/VehicleConfig.h
+    Engine/Physics/RigidBody.h
+    Engine/Physics/VehiclePhysics.h
 )
 
 add_library(Engine STATIC ${ENGINE_SOURCES} ${ENGINE_HEADERS})
@@ -115,6 +126,7 @@ target_link_libraries(Engine
         ${SDL2_LIBRARIES}
         Vulkan::Vulkan
         assimp::assimp
+        nlohmann_json::nlohmann_json
 )
 
 # Debug ビルドで Vulkan バリデーションレイヤーを有効化
@@ -122,8 +134,22 @@ target_compile_definitions(Engine PRIVATE
     $<$<CONFIG:Debug>:REVORA_ENABLE_VALIDATION>
 )
 
+# --- Game ソース ---
+set(GAME_SOURCES
+    Game/Main.cpp
+    Game/Vehicle/VehicleInputMapper.cpp
+    Game/Vehicle/VehicleController.cpp
+    Game/Camera/ChaseCameraController.cpp
+)
+
+set(GAME_HEADERS
+    Game/Vehicle/VehicleInputMapper.h
+    Game/Vehicle/VehicleController.h
+    Game/Camera/ChaseCameraController.h
+)
+
 # --- Game 実行バイナリ ---
-add_executable(Revora Game/Main.cpp)
+add_executable(Revora ${GAME_SOURCES} ${GAME_HEADERS})
 
 target_link_libraries(Revora PRIVATE Engine)
 add_dependencies(Revora CompileShaders)
@@ -150,4 +176,4 @@ add_custom_command(TARGET Revora POST_BUILD
 
 # --- Visual Studio フィルター (IDE上のフォルダ構成) ---
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/Engine" PREFIX "Engine" FILES ${ENGINE_SOURCES} ${ENGINE_HEADERS})
-source_group("Game" FILES Game/Main.cpp)
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/Game" PREFIX "Game" FILES ${GAME_SOURCES} ${GAME_HEADERS})

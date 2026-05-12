@@ -7,11 +7,14 @@
 #include "../Renderer/MeshRenderer.h"
 #include "../Renderer/Skybox.h"
 #include "../Renderer/Camera.h"
-#include "../Renderer/DebugCameraController.h"
 #include "../Resource/MeshLoader.h"
 #include "../Resource/TextureLoader.h"
 #include "../Input/InputManager.h"
+#include "../Physics/VehicleConfig.h"
 #include "Timer.h"
+
+#include "../../Game/Vehicle/VehicleController.h"
+#include "../../Game/Camera/ChaseCameraController.h"
 
 namespace Revora {
 
@@ -48,16 +51,18 @@ private:
     TextureLoader textureLoader_;
 
     // --- カメラ ---
-    Camera                camera_;
-    DebugCameraController cameraController_;
+    Camera               camera_;
+    ChaseCameraController chaseCam_;
 
-    // --- テストリソース ---
-    MeshResource    testMesh_ = {};
-    TextureResource testTexture_ = {};
+    // --- 車両 ---
+    VehicleController vehicle_;
+
+    // --- リソース ---
+    MeshResource    cubeMesh_      = {};
+    TextureResource checkerTex_    = {};
     TextureResource skyboxCubemap_ = {};
 
-    bool  running_ = false;
-    float meshRotation_ = 0.0f;
+    bool running_ = false;
 };
 
 } // namespace Revora

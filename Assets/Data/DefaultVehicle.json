@@ -1,0 +1,28 @@
+{
+    "mass": 1200.0,
+    "dragCoefficient": 0.4,
+    "rollingResistance": 8.0,
+
+    "engineTorque": 4000.0,
+    "brakeTorque": 6000.0,
+    "maxSpeed": 40.0,
+
+    "maxSteerAngle": 35.0,
+    "steerSpeed": 4.0,
+
+    "suspensionRestLength": 0.35,
+    "suspensionStiffness": 30000.0,
+    "suspensionDamping": 3000.0,
+    "wheelRadius": 0.3,
+
+    "tireGripFactor": 1.5,
+    "slipAngleThreshold": 8.0,
+
+    "wheelbaseFront": 1.2,
+    "wheelbaseRear": 1.2,
+    "trackWidth": 0.8,
+    "wheelHeight": 0.0,
+
+    "spawnPosition": [0.0, 0.5, 0.0],
+    "spawnYaw": 0.0
+}

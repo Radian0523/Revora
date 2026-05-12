@@ -95,6 +95,15 @@ Quaternion Quaternion::operator*(const Quaternion& rhs) const {
     };
 }
 
+Vector3 Quaternion::RotateVector(const Vector3& v) const {
+    // q * v * q^-1 を展開した最適化形式
+    // t = 2 * cross(q.xyz, v)
+    // result = v + w * t + cross(q.xyz, t)
+    Vector3 qv(x, y, z);
+    Vector3 t = 2.0f * Vector3::Cross(qv, v);
+    return v + w * t + Vector3::Cross(qv, t);
+}
+
 float Quaternion::Length() const {
     return std::sqrt(x * x + y * y + z * z + w * w);
 }

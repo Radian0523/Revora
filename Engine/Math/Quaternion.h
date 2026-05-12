@@ -28,6 +28,10 @@ struct Quaternion {
 
     Quaternion operator*(const Quaternion& rhs) const;
 
+    /// クォータニオンでベクトルを回転させる (ローカル→ワールド方向変換)
+    /// q * v * q^-1 の最適化形式
+    Vector3 RotateVector(const Vector3& v) const;
+
     float     Length() const;
     Quaternion Normalized() const;
 
