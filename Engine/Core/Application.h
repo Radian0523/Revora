@@ -17,8 +17,9 @@
 #include "../../Game/Camera/ChaseCameraController.h"
 #include "../../Game/Course/CourseData.h"
 #include "../../Game/Course/CourseCollider.h"
-#include "../../Game/Course/CheckpointSystem.h"
-#include "../../Game/Course/LapTimer.h"
+#include "../../Game/Race/RaceManager.h"
+#include "../../Game/Race/GhostRecorder.h"
+#include "../../Game/Flow/GameFlowManager.h"
 
 namespace Revora {
 
@@ -37,6 +38,9 @@ public:
 private:
     void FixedUpdate(float dt);
     void Render();
+
+    /// GameFlowManager に各状態のコールバックを登録する
+    void SetupFlowCallbacks();
 
     // --- コアシステム ---
     Window         window_;
@@ -62,10 +66,14 @@ private:
     VehicleController vehicle_;
 
     // --- コース ---
-    CourseData       courseData_;
-    CourseCollider   courseCollider_;
-    CheckpointSystem checkpointSystem_;
-    LapTimer         lapTimer_;
+    CourseData     courseData_;
+    CourseCollider courseCollider_;
+
+    // --- レース管理 ---
+    RaceManager     raceManager_;
+    GhostRecorder   ghostRecorder_;
+    GhostRecorder   ghostPlayback_;  // 再生用 (前回記録の読み込み先)
+    GameFlowManager flowManager_;
 
     // --- リソース ---
     MeshResource    cubeMesh_      = {};
@@ -74,6 +82,9 @@ private:
     TextureResource skyboxCubemap_ = {};
 
     bool running_ = false;
+
+    // ゴースト保存パス
+    static constexpr const char* kGhostFilePath = "Assets/Data/ghost_default.bin";
 };
 
 } // namespace Revora

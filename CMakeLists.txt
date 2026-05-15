@@ -147,6 +147,9 @@ set(GAME_SOURCES
     Game/Course/CourseCollider.cpp
     Game/Course/CheckpointSystem.cpp
     Game/Course/LapTimer.cpp
+    Game/Race/RaceManager.cpp
+    Game/Race/GhostRecorder.cpp
+    Game/Flow/GameFlowManager.cpp
 )
 
 set(GAME_HEADERS
@@ -158,6 +161,9 @@ set(GAME_HEADERS
     Game/Course/CourseCollider.h
     Game/Course/CheckpointSystem.h
     Game/Course/LapTimer.h
+    Game/Race/RaceManager.h
+    Game/Race/GhostRecorder.h
+    Game/Flow/GameFlowManager.h
 )
 
 # --- Game 実行バイナリ ---
