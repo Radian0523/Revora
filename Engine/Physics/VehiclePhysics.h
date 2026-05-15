@@ -49,6 +49,9 @@ public:
     RigidBody&       GetBody()       { return body_; }
     const RigidBody& GetBody() const { return body_; }
 
+    /// 現在のステアリング角 (ラジアン)
+    float GetSteerAngle() const { return currentSteerAngle_; }
+
     /// 現在の速度 (m/s)
     float GetSpeed() const;
 
