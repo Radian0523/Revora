@@ -9,6 +9,7 @@
 #include "../Renderer/Camera.h"
 #include "../Renderer/ShadowMap.h"
 #include "../Renderer/ParticleRenderer.h"
+#include "../Renderer/SpriteRenderer.h"
 #include "../Resource/MeshLoader.h"
 #include "../Resource/TextureLoader.h"
 #include "../Input/InputManager.h"
@@ -23,6 +24,7 @@
 #include "../../Game/Race/GhostRecorder.h"
 #include "../../Game/Flow/GameFlowManager.h"
 #include "../../Game/Particle/ParticleEmitter.h"
+#include "../../Game/UI/HudOverlay.h"
 
 namespace Revora {
 
@@ -61,6 +63,7 @@ private:
     Skybox               skybox_;
     ShadowMap            shadowMap_;
     ParticleRenderer     particleRenderer_;
+    SpriteRenderer       spriteRenderer_;
 
     // --- リソースローダー ---
     MeshLoader    meshLoader_;
@@ -87,11 +90,15 @@ private:
     ParticleEmitter smokeEmitter_;
     ParticleEmitter sparkEmitter_;
 
+    // --- UI ---
+    HudOverlay hudOverlay_;
+
     // --- リソース ---
     MeshResource    cubeMesh_      = {};
     MeshResource    courseMesh_    = {};
     TextureResource checkerTex_    = {};
     TextureResource skyboxCubemap_ = {};
+    TextureResource fontAtlas_     = {};
 
     bool running_ = false;
 

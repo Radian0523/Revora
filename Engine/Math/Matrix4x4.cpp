@@ -118,6 +118,31 @@ Matrix4x4 Matrix4x4::PerspectiveFovLH(float fovY, float aspect, float nearZ, flo
     return result;
 }
 
+Matrix4x4 Matrix4x4::Orthographic(float left, float right,
+                                   float bottom, float top,
+                                   float nearVal, float farVal)
+{
+    // 行優先・行ベクトル方式の正射影行列
+    // Vulkan の NDC: X[-1,1], Y[-1,1] (上が-1), Z[0,1]
+    // (0,0)=左上 → NDC(-1,-1), (width,height)=右下 → NDC(1,1)
+    float invWidth  = 1.0f / (right - left);
+    float invHeight = 1.0f / (top - bottom);
+    float invDepth  = 1.0f / (farVal - nearVal);
+
+    Matrix4x4 result;
+    std::memset(&result, 0, sizeof(result));
+
+    result.m[0][0] =  2.0f * invWidth;
+    result.m[1][1] =  2.0f * invHeight;
+    result.m[2][2] =  invDepth;
+    result.m[3][0] = -(right + left) * invWidth;
+    result.m[3][1] = -(top + bottom) * invHeight;
+    result.m[3][2] = -nearVal * invDepth;
+    result.m[3][3] =  1.0f;
+
+    return result;
+}
+
 Matrix4x4 Matrix4x4::operator*(const Matrix4x4& rhs) const {
     Matrix4x4 result;
     std::memset(&result, 0, sizeof(result));

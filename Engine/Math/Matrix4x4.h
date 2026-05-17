@@ -26,6 +26,13 @@ struct Matrix4x4 {
     /// 左手座標系 透視投影 (fovY はラジアン)
     static Matrix4x4 PerspectiveFovLH(float fovY, float aspect, float nearZ, float farZ);
 
+    /// 正射影行列 (Vulkan depth [0,1])
+    /// UI 描画ではピクセル座標を NDC に変換する:
+    ///   Orthographic(0, width, 0, height, -1, 1)
+    static Matrix4x4 Orthographic(float left, float right,
+                                   float bottom, float top,
+                                   float nearVal, float farVal);
+
     Matrix4x4 operator*(const Matrix4x4& rhs) const;
     Matrix4x4& operator*=(const Matrix4x4& rhs);
 

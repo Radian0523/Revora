@@ -20,6 +20,9 @@ static constexpr uint32_t kMaxDescriptorSets = 8;
 static constexpr int kMaxSmokeParticles = 256;
 static constexpr int kMaxSparkParticles = 128;
 
+// UI スプライト設定
+static constexpr uint32_t kMaxSpriteVertices = 4096;
+
 // タイヤスモーク発生閾値: スリップ比がこの値を超えると煙を発生させる
 static constexpr float kSmokeSlipThreshold = 0.7f;
 
@@ -91,6 +94,13 @@ bool Application::Initialize()
         return false;
     }
 
+    // スプライトレンダラー初期化 (UI / HUD 描画用)
+    if (!spriteRenderer_.Initialize(device, physDevice, renderPass, shaderMgr_, kMaxSpriteVertices)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to initialize SpriteRenderer");
+        Shutdown();
+        return false;
+    }
+
     // --- リソースローダー初期化 ---
     meshLoader_.Initialize(device, physDevice, commandPool, graphicsQueue);
     textureLoader_.Initialize(device, physDevice, commandPool, graphicsQueue);
@@ -118,6 +128,12 @@ bool Application::Initialize()
     };
     if (!textureLoader_.LoadCubemap(skyboxFaces, skyboxCubemap_)) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load skybox cubemap");
+        Shutdown();
+        return false;
+    }
+
+    if (!textureLoader_.LoadTexture2D("Assets/Fonts/MonoFont.png", fontAtlas_)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to load font atlas");
         Shutdown();
         return false;
     }
@@ -191,6 +207,9 @@ bool Application::Initialize()
     smokeEmitter_.Initialize(kMaxSmokeParticles);
     sparkEmitter_.Initialize(kMaxSparkParticles);
 
+    // --- UI 初期化 ---
+    hudOverlay_.Initialize(256, 96, 16, 16, 16);
+
     // --- ゲームフロー初期化 ---
     SetupFlowCallbacks();
     flowManager_.Initialize(GameState::Countdown);
@@ -241,6 +260,18 @@ void Application::SetupFlowCallbacks()
             // 保存した記録を次回再生用にコピー
             ghostPlayback_.LoadFromFile(kGhostFilePath);
         },
+        /*onUpdate*/ [this](float /*dt*/) {
+            // ゴースト保存完了後、即座にリザルト画面へ遷移
+            flowManager_.TransitionTo(GameState::Result);
+        },
+        /*onExit*/   nullptr
+    });
+
+    // --- Result 状態 ---
+    // R キーによるリセットは Run() 内で全状態共通で処理されるため、
+    // ここでは追加のコールバックは不要
+    flowManager_.SetCallbacks(GameState::Result, {
+        /*onEnter*/  nullptr,
         /*onUpdate*/ nullptr,
         /*onExit*/   nullptr
     });
@@ -259,14 +290,16 @@ void Application::Run()
             frameTime = kMaxFrameTime;
         }
 
-        // イベントポンプ
+        // 入力更新: PumpEvents の前に呼ぶことで、SDL がキーボード状態を
+        // 上書きする前に前フレームの状態を previousKeys_ に保存する。
+        // これにより IsKeyPressed のエッジ検出が正しく動作する
+        input_.Update();
+
+        // イベントポンプ (SDL 内部のキーボード状態配列がここで更新される)
         if (window_.PumpEvents()) {
             running_ = false;
             break;
         }
-
-        // 入力更新
-        input_.Update();
 
         // Escape キーで終了
         if (input_.IsKeyDown(SDL_SCANCODE_ESCAPE)) {
@@ -301,11 +334,13 @@ void Application::Shutdown()
         vkDeviceWaitIdle(graphics_.GetDevice());
     }
 
+    textureLoader_.DestroyTexture(fontAtlas_);
     textureLoader_.DestroyTexture(skyboxCubemap_);
     textureLoader_.DestroyTexture(checkerTex_);
     meshLoader_.DestroyMesh(courseMesh_);
     meshLoader_.DestroyMesh(cubeMesh_);
 
+    spriteRenderer_.Shutdown();
     particleRenderer_.Shutdown();
     shadowMap_.Shutdown();
     skybox_.Shutdown();
@@ -507,6 +542,24 @@ void Application::Render()
     }
 
     particleRenderer_.Draw(cmd, frameIndex);
+
+    // --- UI / HUD 描画 ---
+    spriteRenderer_.UpdateProjection(frameIndex,
+        static_cast<float>(window_.GetWidth()),
+        static_cast<float>(window_.GetHeight()));
+
+    std::vector<SpriteVertex> uiVertices;
+    uiVertices.reserve(2048);
+
+    hudOverlay_.BuildVertices(flowManager_, raceManager_,
+        vehicle_.GetPhysics(), courseData_,
+        vehicle_.GetPhysics().GetBody(), uiVertices);
+
+    if (!uiVertices.empty()) {
+        spriteRenderer_.UploadVertices(frameIndex, uiVertices.data(),
+            static_cast<uint32_t>(uiVertices.size()));
+        spriteRenderer_.Draw(cmd, frameIndex, fontAtlas_);
+    }
 
     graphics_.EndFrame();
 }

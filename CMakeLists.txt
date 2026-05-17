@@ -41,6 +41,8 @@ set(SHADER_SOURCES
     "${SHADER_SOURCE_DIR}/ShadowDepth.frag"
     "${SHADER_SOURCE_DIR}/Particle.vert"
     "${SHADER_SOURCE_DIR}/Particle.frag"
+    "${SHADER_SOURCE_DIR}/Sprite.vert"
+    "${SHADER_SOURCE_DIR}/Sprite.frag"
 )
 
 set(SHADER_SPIRV_OUTPUTS "")
@@ -79,6 +81,7 @@ set(ENGINE_SOURCES
     Engine/Renderer/Skybox.cpp
     Engine/Renderer/ShadowMap.cpp
     Engine/Renderer/ParticleRenderer.cpp
+    Engine/Renderer/SpriteRenderer.cpp
     Engine/Resource/StbImage.cpp
     Engine/Resource/TextureLoader.cpp
     Engine/Resource/MeshLoader.cpp
@@ -110,6 +113,7 @@ set(ENGINE_HEADERS
     Engine/Renderer/Skybox.h
     Engine/Renderer/ShadowMap.h
     Engine/Renderer/ParticleRenderer.h
+    Engine/Renderer/SpriteRenderer.h
     Engine/Resource/TextureLoader.h
     Engine/Resource/MeshLoader.h
     Engine/Input/InputManager.h
@@ -159,6 +163,8 @@ set(GAME_SOURCES
     Game/Race/GhostRecorder.cpp
     Game/Flow/GameFlowManager.cpp
     Game/Particle/ParticleEmitter.cpp
+    Game/UI/BitmapFont.cpp
+    Game/UI/HudOverlay.cpp
 )
 
 set(GAME_HEADERS
@@ -174,6 +180,8 @@ set(GAME_HEADERS
     Game/Race/GhostRecorder.h
     Game/Flow/GameFlowManager.h
     Game/Particle/ParticleEmitter.h
+    Game/UI/BitmapFont.h
+    Game/UI/HudOverlay.h
 )
 
 # --- Game 実行バイナリ ---
