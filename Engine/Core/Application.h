@@ -7,6 +7,8 @@
 #include "../Renderer/MeshRenderer.h"
 #include "../Renderer/Skybox.h"
 #include "../Renderer/Camera.h"
+#include "../Renderer/ShadowMap.h"
+#include "../Renderer/ParticleRenderer.h"
 #include "../Resource/MeshLoader.h"
 #include "../Resource/TextureLoader.h"
 #include "../Input/InputManager.h"
@@ -20,6 +22,7 @@
 #include "../../Game/Race/RaceManager.h"
 #include "../../Game/Race/GhostRecorder.h"
 #include "../../Game/Flow/GameFlowManager.h"
+#include "../../Game/Particle/ParticleEmitter.h"
 
 namespace Revora {
 
@@ -42,6 +45,9 @@ private:
     /// GameFlowManager に各状態のコールバックを登録する
     void SetupFlowCallbacks();
 
+    /// パーティクル生成: タイヤスモークと壁衝突火花
+    void EmitParticles(float dt);
+
     // --- コアシステム ---
     Window         window_;
     GraphicsDevice graphics_;
@@ -53,6 +59,8 @@ private:
     DescriptorSetManager descriptorMgr_;
     MeshRenderer         meshRenderer_;
     Skybox               skybox_;
+    ShadowMap            shadowMap_;
+    ParticleRenderer     particleRenderer_;
 
     // --- リソースローダー ---
     MeshLoader    meshLoader_;
@@ -74,6 +82,10 @@ private:
     GhostRecorder   ghostRecorder_;
     GhostRecorder   ghostPlayback_;  // 再生用 (前回記録の読み込み先)
     GameFlowManager flowManager_;
+
+    // --- パーティクル ---
+    ParticleEmitter smokeEmitter_;
+    ParticleEmitter sparkEmitter_;
 
     // --- リソース ---
     MeshResource    cubeMesh_      = {};
