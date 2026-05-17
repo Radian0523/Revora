@@ -69,6 +69,8 @@ set(ENGINE_SOURCES
     Engine/Platform/Window.cpp
     Engine/Core/Timer.cpp
     Engine/Core/Application.cpp
+    Engine/Core/LinearAllocator.cpp
+    Engine/Audio/AudioManager.cpp
     Engine/Renderer/GraphicsDevice.cpp
     Engine/Renderer/VulkanHelpers.cpp
     Engine/Renderer/Vertex.cpp
@@ -101,6 +103,9 @@ set(ENGINE_HEADERS
     Engine/Platform/Window.h
     Engine/Core/Timer.h
     Engine/Core/Application.h
+    Engine/Core/LinearAllocator.h
+    Engine/Core/ObjectPool.h
+    Engine/Audio/AudioManager.h
     Engine/Renderer/GraphicsDevice.h
     Engine/Renderer/VulkanHelpers.h
     Engine/Renderer/Vertex.h
@@ -135,6 +140,12 @@ target_include_directories(Engine PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/stb"
 )
 
+# miniaudio ヘッダーのインクルードパス
+# AudioManager.h が miniaudio.h を直接インクルードするため PUBLIC にする
+target_include_directories(Engine PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/miniaudio"
+)
+
 target_link_libraries(Engine
     PUBLIC
         ${SDL2_LIBRARIES}
@@ -142,6 +153,15 @@ target_link_libraries(Engine
         assimp::assimp
         nlohmann_json::nlohmann_json
 )
+
+# macOS: miniaudio が CoreAudio / AudioToolbox を使用する
+if(APPLE)
+    target_link_libraries(Engine PUBLIC
+        "-framework CoreAudio"
+        "-framework AudioToolbox"
+        "-framework CoreFoundation"
+    )
+endif()
 
 # Debug ビルドで Vulkan バリデーションレイヤーを有効化
 target_compile_definitions(Engine PRIVATE

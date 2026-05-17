@@ -26,6 +26,7 @@ void HudOverlay::BuildVertices(
     const VehiclePhysics& physics,
     const CourseData& course,
     const RigidBody& vehicleBody,
+    float fps,
     std::vector<SpriteVertex>& outVertices)
 {
     GameState state = flow.GetCurrentState();
@@ -34,6 +35,7 @@ void HudOverlay::BuildVertices(
     {
     case GameState::Countdown:
         BuildCountdown(race, race.GetTotalTime(), outVertices);
+        BuildFPSCounter(fps, outVertices);
         break;
 
     case GameState::Racing:
@@ -50,6 +52,7 @@ void HudOverlay::BuildVertices(
             font_.GenerateTextVertices(goText, cx, cy, scale,
                                        0.0f, 1.0f, 0.0f, 1.0f, outVertices);
         }
+        BuildFPSCounter(fps, outVertices);
         break;
 
     case GameState::Finished:
@@ -65,6 +68,7 @@ void HudOverlay::BuildVertices(
             font_.GenerateTextVertices(finishText, cx, cy, scale,
                                        1.0f, 0.8f, 0.0f, 1.0f, outVertices);
         }
+        BuildFPSCounter(fps, outVertices);
         break;
 
     case GameState::Result:
@@ -326,6 +330,20 @@ void HudOverlay::BuildResult(const RaceManager& race,
     float retryX = (kScreenWidth - retryW) * 0.5f;
     font_.GenerateTextVertices(retryText, retryX, lapY, retryScale,
                                0.7f, 0.7f, 0.7f, 1.0f, outVertices);
+}
+
+void HudOverlay::BuildFPSCounter(float fps,
+                                   std::vector<SpriteVertex>& outVertices)
+{
+    char buf[16];
+    std::snprintf(buf, sizeof(buf), "FPS:%3d", static_cast<int>(fps));
+
+    // 左下隅に灰色で小さく表示 (ゲームプレイの邪魔にならないサイズ)
+    float scale = 1.0f;
+    float x = 20.0f;
+    float y = kScreenHeight - font_.GetLineHeight(scale) - 10.0f;
+    font_.GenerateTextVertices(buf, x, y, scale,
+                               0.6f, 0.6f, 0.6f, 0.7f, outVertices);
 }
 
 void HudOverlay::FormatTime(float seconds, char* buffer, std::size_t bufferSize)

@@ -24,12 +24,14 @@ public:
                     uint32_t columns);
 
     /// 毎フレーム: 現在のゲーム状態に応じた全 UI 要素の頂点を生成する
+    /// @param fps 現在のフレームレート (FPS カウンター表示用)
     void BuildVertices(
         const GameFlowManager& flow,
         const RaceManager& race,
         const VehiclePhysics& physics,
         const CourseData& course,
         const RigidBody& vehicleBody,
+        float fps,
         std::vector<SpriteVertex>& outVertices);
 
 private:
@@ -53,6 +55,10 @@ private:
     /// リザルト画面
     void BuildResult(const RaceManager& race,
                      std::vector<SpriteVertex>& outVertices);
+
+    /// FPS カウンター (左下隅に灰色で小さく表示)
+    void BuildFPSCounter(float fps,
+                         std::vector<SpriteVertex>& outVertices);
 
     /// float 秒 → "MM:SS.mmm" フォーマット
     static void FormatTime(float seconds, char* buffer, std::size_t bufferSize);

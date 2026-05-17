@@ -6,6 +6,7 @@
 #include <SDL.h>
 
 #include <cmath>
+#include <cstring>
 
 namespace Revora {
 
@@ -29,6 +30,14 @@ static constexpr float kSmokeSlipThreshold = 0.7f;
 // 壁衝突火花の最小衝突速度: これ以下の軽い接触では火花を出さない
 static constexpr float kSparkMinImpactSpeed = 2.0f;
 
+// オーディオファイルパス
+static constexpr const char* kBGMPath             = "Assets/Audio/bgm_race.wav";
+static constexpr const char* kSECountdownBeepPath = "Assets/Audio/countdown_beep.wav";
+static constexpr const char* kSEGoBeepPath        = "Assets/Audio/go_beep.wav";
+static constexpr const char* kSECollisionPath     = "Assets/Audio/collision.wav";
+static constexpr const char* kSELapCompletePath   = "Assets/Audio/lap_complete.wav";
+static constexpr const char* kSERaceFinishPath    = "Assets/Audio/race_finish.wav";
+
 bool Application::Initialize()
 {
     WindowDesc desc;
@@ -48,6 +57,21 @@ bool Application::Initialize()
         window_.Shutdown();
         return false;
     }
+
+    // --- オーディオ初期化 ---
+    // miniaudio は初期化失敗してもゲーム自体は動作可能なため、
+    // 致命的エラーとはせずに続行する
+    if (audio_.Initialize()) {
+        audio_.LoadBGM(kBGMPath);
+        audio_.LoadSE(kSECountdownBeep, kSECountdownBeepPath);
+        audio_.LoadSE(kSEGoBeep,        kSEGoBeepPath);
+        audio_.LoadSE(kSECollision,     kSECollisionPath);
+        audio_.LoadSE(kSELapComplete,   kSELapCompletePath);
+        audio_.LoadSE(kSERaceFinish,    kSERaceFinishPath);
+    }
+
+    // --- フレーム単位アロケータ初期化 ---
+    frameAllocator_.Initialize(kFrameAllocatorCapacity);
 
     // --- 描画システム初期化 ---
     VkDevice device             = graphics_.GetDevice();
@@ -229,8 +253,18 @@ void Application::SetupFlowCallbacks()
         /*onEnter*/  [this]() {
             raceManager_.Reset();
             ghostRecorder_.StartRecording();
+            prevCountdownSeconds_ = -1;
+            prevLap_ = 1;
+            audio_.PlayBGM();
         },
         /*onUpdate*/ [this](float /*dt*/) {
+            // カウントダウン SE: 秒が切り替わったときだけビープを鳴らす
+            int seconds = raceManager_.GetCountdownSeconds();
+            if (seconds != prevCountdownSeconds_ && seconds > 0) {
+                audio_.PlaySE(kSECountdownBeep);
+                prevCountdownSeconds_ = seconds;
+            }
+
             // RaceManager がカウントダウンを管理し、Racing に遷移したら通知
             if (raceManager_.GetState() == RaceState::Racing) {
                 flowManager_.TransitionTo(GameState::Racing);
@@ -241,7 +275,9 @@ void Application::SetupFlowCallbacks()
 
     // --- Racing 状態 ---
     flowManager_.SetCallbacks(GameState::Racing, {
-        /*onEnter*/  nullptr,
+        /*onEnter*/  [this]() {
+            audio_.PlaySE(kSEGoBeep);
+        },
         /*onUpdate*/ [this](float /*dt*/) {
             if (raceManager_.GetState() == RaceState::Finished) {
                 flowManager_.TransitionTo(GameState::Finished);
@@ -253,6 +289,8 @@ void Application::SetupFlowCallbacks()
     // --- Finished 状態 ---
     flowManager_.SetCallbacks(GameState::Finished, {
         /*onEnter*/  [this]() {
+            audio_.PlaySE(kSERaceFinish);
+
             // ゴースト記録を停止し、ファイルに保存する
             ghostRecorder_.StopRecording();
             ghostRecorder_.SaveToFile(kGhostFilePath);
@@ -307,8 +345,9 @@ void Application::Run()
             break;
         }
 
-        // R キーでリセット (車両 + レース + ゴースト記録 + パーティクルを一括リセット)
+        // R キーでリセット (車両 + レース + ゴースト記録 + パーティクル + オーディオを一括リセット)
         if (input_.IsKeyPressed(SDL_SCANCODE_R)) {
+            audio_.StopAll();
             vehicle_.Reset();
             raceManager_.Reset();
             ghostRecorder_.Reset();
@@ -348,6 +387,7 @@ void Application::Shutdown()
     descriptorMgr_.Shutdown();
     shaderMgr_.Shutdown();
 
+    audio_.Shutdown();
     input_.Shutdown();
     graphics_.Shutdown();
     window_.Shutdown();
@@ -360,6 +400,13 @@ void Application::FixedUpdate(float dt)
     // RaceManager 更新 (カウントダウン / チェックポイント / タイマー)
     if (flowManager_.ShouldUpdateRace()) {
         raceManager_.Update(dt, body.position);
+
+        // ラップ完了を検出して SE を鳴らす
+        int currentLap = raceManager_.GetCurrentLap();
+        if (currentLap > prevLap_ && !raceManager_.IsRaceFinished()) {
+            audio_.PlaySE(kSELapComplete);
+            prevLap_ = currentLap;
+        }
     }
 
     // GameFlowManager 更新 (状態遷移コールバック)
@@ -424,6 +471,7 @@ void Application::EmitParticles(float /*dt*/)
     // --- 壁衝突火花: 一定速度以上の衝突で黄/オレンジの火花を発生 ---
     const CollisionResult& collision = vehicle_.GetLastCollision();
     if (collision.collided && collision.impactSpeed > kSparkMinImpactSpeed) {
+        audio_.PlaySE(kSECollision);
         ParticleConfig sparkConfig;
         sparkConfig.minLifetime  = 0.15f;
         sparkConfig.maxLifetime  = 0.35f;
@@ -519,24 +567,25 @@ void Application::Render()
 
     // スモークと火花を合わせて一つのバッファに転送
     // 両方のパーティクルを連続配列にまとめる
-    const auto& smokeParticles = smokeEmitter_.GetActiveParticles();
-    const auto& sparkParticles = sparkEmitter_.GetActiveParticles();
+    const Particle* smokeParticles = smokeEmitter_.GetActiveParticles();
+    const Particle* sparkParticles = sparkEmitter_.GetActiveParticles();
     uint32_t smokeCount = smokeEmitter_.GetActiveCount();
     uint32_t sparkCount = sparkEmitter_.GetActiveCount();
     uint32_t totalCount = smokeCount + sparkCount;
 
     if (totalCount > 0) {
-        // 一時バッファにマージ
-        std::vector<Particle> allParticles;
-        allParticles.reserve(totalCount);
-        allParticles.insert(allParticles.end(),
-                           smokeParticles.begin(),
-                           smokeParticles.begin() + smokeCount);
-        allParticles.insert(allParticles.end(),
-                           sparkParticles.begin(),
-                           sparkParticles.begin() + sparkCount);
+        // LinearAllocator でフレーム内一時バッファを確保し、ヒープ割り当てを回避する
+        Particle* mergedParticles = static_cast<Particle*>(
+            frameAllocator_.Allocate(totalCount * sizeof(Particle), alignof(Particle)));
 
-        particleRenderer_.UploadParticles(frameIndex, allParticles.data(), totalCount);
+        if (mergedParticles) {
+            std::memcpy(mergedParticles, smokeParticles, smokeCount * sizeof(Particle));
+            std::memcpy(mergedParticles + smokeCount, sparkParticles,
+                        sparkCount * sizeof(Particle));
+            particleRenderer_.UploadParticles(frameIndex, mergedParticles, totalCount);
+        } else {
+            particleRenderer_.UploadParticles(frameIndex, nullptr, 0);
+        }
     } else {
         particleRenderer_.UploadParticles(frameIndex, nullptr, 0);
     }
@@ -553,7 +602,7 @@ void Application::Render()
 
     hudOverlay_.BuildVertices(flowManager_, raceManager_,
         vehicle_.GetPhysics(), courseData_,
-        vehicle_.GetPhysics().GetBody(), uiVertices);
+        vehicle_.GetPhysics().GetBody(), timer_.GetFPS(), uiVertices);
 
     if (!uiVertices.empty()) {
         spriteRenderer_.UploadVertices(frameIndex, uiVertices.data(),
@@ -562,6 +611,9 @@ void Application::Render()
     }
 
     graphics_.EndFrame();
+
+    // フレーム単位アロケータのリセット: 次フレームで同じバッファを再利用する
+    frameAllocator_.Reset();
 }
 
 } // namespace Revora

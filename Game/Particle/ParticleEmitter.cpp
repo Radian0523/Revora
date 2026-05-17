@@ -1,33 +1,29 @@
 #include "ParticleEmitter.h"
 
-#include <algorithm>
 #include <cmath>
 
 namespace Revora {
 
 void ParticleEmitter::Initialize(int maxParticles)
 {
-    maxParticles_ = static_cast<uint32_t>(maxParticles);
-    particles_.resize(maxParticles_);
-    activeCount_ = 0;
+    pool_.Initialize(static_cast<uint32_t>(maxParticles));
 }
 
 void ParticleEmitter::Emit(const Vector3& position, const Vector3& direction,
                             int count, const ParticleConfig& config)
 {
     for (int i = 0; i < count; ++i) {
-        if (activeCount_ >= maxParticles_) {
+        Particle* p = pool_.Acquire();
+        if (p == nullptr) {
             break;
         }
 
-        Particle& p = particles_[activeCount_];
-
-        p.position = position;
-        p.lifetime = RandomFloat(config.minLifetime, config.maxLifetime);
-        p.age      = 0.0f;
-        p.size     = RandomFloat(config.minSize, config.maxSize);
-        p.alpha    = config.initialAlpha;
-        p.color    = config.color;
+        p->position = position;
+        p->lifetime = RandomFloat(config.minLifetime, config.maxLifetime);
+        p->age      = 0.0f;
+        p->size     = RandomFloat(config.minSize, config.maxSize);
+        p->alpha    = config.initialAlpha;
+        p->color    = config.color;
 
         // 射出方向にランダムな散布を加える
         float speed = RandomFloat(config.minSpeed, config.maxSpeed);
@@ -35,23 +31,20 @@ void ParticleEmitter::Emit(const Vector3& position, const Vector3& direction,
         float spreadY = RandomFloat(0.0f, 0.5f);
         float spreadZ = RandomFloat(-0.3f, 0.3f);
 
-        p.velocity = (direction + Vector3(spreadX, spreadY, spreadZ)).Normalized() * speed;
-
-        ++activeCount_;
+        p->velocity = (direction + Vector3(spreadX, spreadY, spreadZ)).Normalized() * speed;
     }
 }
 
 void ParticleEmitter::Update(float dt)
 {
     uint32_t i = 0;
-    while (i < activeCount_) {
-        Particle& p = particles_[i];
+    while (i < pool_.GetActiveCount()) {
+        Particle& p = pool_[i];
         p.age += dt;
 
         if (p.age >= p.lifetime) {
-            // 寿命切れ: 末尾のパーティクルとスワップして除去
-            particles_[i] = particles_[activeCount_ - 1];
-            --activeCount_;
+            // 寿命切れ: swap-and-pop で O(1) 除去
+            pool_.Release(i);
             continue;
         }
 
@@ -74,7 +67,7 @@ void ParticleEmitter::Update(float dt)
 
 void ParticleEmitter::Reset()
 {
-    activeCount_ = 0;
+    pool_.Reset();
 }
 
 float ParticleEmitter::RandomFloat(float min, float max)

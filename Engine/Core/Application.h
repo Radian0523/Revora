@@ -14,7 +14,9 @@
 #include "../Resource/TextureLoader.h"
 #include "../Input/InputManager.h"
 #include "../Physics/VehicleConfig.h"
+#include "../Audio/AudioManager.h"
 #include "Timer.h"
+#include "LinearAllocator.h"
 
 #include "../../Game/Vehicle/VehicleController.h"
 #include "../../Game/Camera/ChaseCameraController.h"
@@ -55,6 +57,8 @@ private:
     GraphicsDevice graphics_;
     InputManager   input_;
     Timer          timer_;
+    AudioManager   audio_;
+    LinearAllocator frameAllocator_;
 
     // --- 描画システム ---
     ShaderManager        shaderMgr_;
@@ -102,8 +106,17 @@ private:
 
     bool running_ = false;
 
+    // カウントダウン SE のエッジ検出: 秒が切り替わったときだけ SE を鳴らす
+    int prevCountdownSeconds_ = -1;
+
+    // ラップ完了 SE のエッジ検出: 前フレームのラップ番号を記憶する
+    int prevLap_ = 0;
+
     // ゴースト保存パス
     static constexpr const char* kGhostFilePath = "Assets/Data/ghost_default.bin";
+
+    // フレーム単位アロケータの容量 (UI 頂点バッファの一時確保に十分)
+    static constexpr std::size_t kFrameAllocatorCapacity = 64 * 1024;
 };
 
 } // namespace Revora
