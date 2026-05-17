@@ -12,10 +12,12 @@ void CourseCollider::Initialize(const CatmullRomSpline* spline, float trackWidth
     trackWidth_ = trackWidth;
 }
 
-void CourseCollider::Constrain(RigidBody& body) const
+CollisionResult CourseCollider::Constrain(RigidBody& body) const
 {
+    CollisionResult result;
+
     if (!spline_ || spline_->GetSegmentCount() == 0) {
-        return;
+        return result;
     }
 
     // スプライン上の最近点を探索
@@ -29,7 +31,7 @@ void CourseCollider::Constrain(RigidBody& body) const
 
     // トラック幅の内側にいる場合は何もしない
     if (std::abs(lateralOffset) <= trackWidth_) {
-        return;
+        return result;
     }
 
     // 壁に衝突: 車両をトラック幅の境界上に押し戻す
@@ -49,9 +51,18 @@ void CourseCollider::Constrain(RigidBody& body) const
 
     // 壁に向かって移動している場合のみ反射
     if (velDotNormal < 0.0f) {
+        // 衝突情報をパーティクル生成用に記録
+        result.collided    = true;
+        result.point       = body.position;
+        result.point.y     = 0.3f;  // 衝突火花の高さ
+        result.normal      = wallNormal;
+        result.impactSpeed = std::abs(velDotNormal);
+
         body.velocity.x -= wallNormal.x * velDotNormal * (1.0f + kWallRestitution);
         body.velocity.z -= wallNormal.z * velDotNormal * (1.0f + kWallRestitution);
     }
+
+    return result;
 }
 
 } // namespace Revora

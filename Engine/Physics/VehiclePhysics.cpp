@@ -88,6 +88,61 @@ void VehiclePhysics::Reset()
     currentSteerAngle_ = 0.0f;
 }
 
+float VehiclePhysics::GetWheelSlipRatio(int wheelIndex) const
+{
+    if (wheelIndex < 0 || wheelIndex >= kWheelCount) {
+        return 0.0f;
+    }
+
+    const WheelState& wheel = wheels_[wheelIndex];
+    if (!wheel.isGrounded) {
+        return 0.0f;
+    }
+
+    // ホイールの前方・右方向
+    Vector3 wheelForward = body_.GetForward();
+    Vector3 wheelRight   = body_.GetRight();
+
+    bool isFrontWheel = (wheelIndex == kFrontLeft || wheelIndex == kFrontRight);
+    if (isFrontWheel) {
+        float cosA = std::cos(currentSteerAngle_);
+        float sinA = std::sin(currentSteerAngle_);
+        Vector3 fwd = wheelForward;
+        Vector3 rgt = wheelRight;
+        wheelForward = fwd * cosA + rgt * sinA;
+        wheelRight   = rgt * cosA - fwd * sinA;
+    }
+
+    // 接地点の速度からスリップ角を計算
+    Vector3 wheelWorldPos = body_.LocalToWorld(wheelLocalOffsets_[wheelIndex]);
+    Vector3 pointVelocity = body_.GetPointVelocity(wheelWorldPos);
+
+    float lateralSpeed      = Vector3::Dot(pointVelocity, wheelRight);
+    float longitudinalSpeed = Vector3::Dot(pointVelocity, wheelForward);
+
+    float slipAngle = std::atan2(lateralSpeed,
+                                  std::abs(longitudinalSpeed) + kMinSpeedForSlip);
+
+    // スリップ角を閾値で正規化して 0.0~1.0 にクランプ
+    float thresholdRad = config_.slipAngleThreshold * kDegToRad;
+    float ratio = std::abs(slipAngle) / thresholdRad;
+    return std::min(ratio, 1.0f);
+}
+
+Vector3 VehiclePhysics::GetWheelWorldPosition(int wheelIndex) const
+{
+    if (wheelIndex < 0 || wheelIndex >= kWheelCount) {
+        return body_.position;
+    }
+
+    const WheelState& wheel = wheels_[wheelIndex];
+    if (wheel.isGrounded) {
+        return wheel.contactPoint;
+    }
+
+    return body_.LocalToWorld(wheelLocalOffsets_[wheelIndex]);
+}
+
 void VehiclePhysics::SetupWheelOffsets()
 {
     float front = config_.wheelbaseFront;

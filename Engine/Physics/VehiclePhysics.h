@@ -58,6 +58,14 @@ public:
     /// ホイール状態の取得
     const std::array<WheelState, kWheelCount>& GetWheelStates() const { return wheels_; }
 
+    /// 指定ホイールのスリップ量を 0.0~1.0 で返す
+    /// パーティクル生成の閾値判定に使用する
+    float GetWheelSlipRatio(int wheelIndex) const;
+
+    /// 指定ホイールの接地点ワールド座標を返す
+    /// パーティクルの発生位置として使用する
+    Vector3 GetWheelWorldPosition(int wheelIndex) const;
+
     /// 矩形境界クランプの有効/無効を切り替える
     /// コースシステム使用時は CourseCollider が境界管理するため無効にする
     void SetBoundaryClampEnabled(bool enabled) { enableBoundaryClamp_ = enabled; }

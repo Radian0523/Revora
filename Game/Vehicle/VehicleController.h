@@ -2,11 +2,11 @@
 
 #include "../../Engine/Physics/VehiclePhysics.h"
 #include "../../Engine/Physics/VehicleConfig.h"
+#include "../Course/CourseCollider.h"
 
 namespace Revora {
 
 class InputManager;
-class CourseCollider;
 
 /// 車両操作の Game 層ラッパー
 /// 入力のスムージングとステアリング補間を行い、VehiclePhysics に受け渡す
@@ -29,6 +29,9 @@ public:
     VehiclePhysics&       GetPhysics()       { return physics_; }
     const VehiclePhysics& GetPhysics() const { return physics_; }
 
+    /// 直前フレームの壁衝突結果を取得する (パーティクル生成用)
+    const CollisionResult& GetLastCollision() const { return lastCollision_; }
+
 private:
     /// ステアリング入力を指数平滑でスムージングする
     /// キーボードのデジタル入力を滑らかなアナログ値に変換する
@@ -38,6 +41,7 @@ private:
     VehicleConfig  config_;
 
     const CourseCollider* courseCollider_ = nullptr;
+    CollisionResult       lastCollision_;
 
     float currentSteering_ = 0.0f;  // スムージング済みステアリング値 (-1~1)
 };

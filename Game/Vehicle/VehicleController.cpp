@@ -1,6 +1,5 @@
 #include "VehicleController.h"
 #include "VehicleInputMapper.h"
-#include "../Course/CourseCollider.h"
 #include "../../Engine/Input/InputManager.h"
 #include "../../Engine/Math/MathConstants.h"
 
@@ -48,8 +47,9 @@ void VehicleController::Update(const InputManager& input, float dt)
     physics_.Update(dt, vehicleInput);
 
     // コース境界拘束: 物理更新後に適用することで Engine 層への依存を回避
+    lastCollision_ = {};
     if (courseCollider_) {
-        courseCollider_->Constrain(physics_.GetBody());
+        lastCollision_ = courseCollider_->Constrain(physics_.GetBody());
     }
 }
 
