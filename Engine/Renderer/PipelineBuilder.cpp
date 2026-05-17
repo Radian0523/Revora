@@ -51,6 +51,26 @@ void PipelineBuilder::SetDepthTest(bool enable, bool writeEnable, VkCompareOp co
     depthCompareOp_   = compareOp;
 }
 
+void PipelineBuilder::SetBlendMode(bool enable, VkBlendFactor srcFactor, VkBlendFactor dstFactor) {
+    blendEnable_    = enable;
+    blendSrcFactor_ = srcFactor;
+    blendDstFactor_ = dstFactor;
+}
+
+void PipelineBuilder::SetBlendModeAlpha() {
+    SetBlendMode(true, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA);
+}
+
+void PipelineBuilder::SetBlendModeAdditive() {
+    SetBlendMode(true, VK_BLEND_FACTOR_SRC_ALPHA, VK_BLEND_FACTOR_ONE);
+}
+
+void PipelineBuilder::SetDepthBias(bool enable, float constantFactor, float slopeFactor) {
+    depthBiasEnable_         = enable;
+    depthBiasConstantFactor_ = constantFactor;
+    depthBiasSlopeFactor_    = slopeFactor;
+}
+
 VkPipeline PipelineBuilder::Build(VkDevice device, VkRenderPass renderPass, uint32_t subpass) {
     // 頂点入力
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
@@ -83,7 +103,10 @@ VkPipeline PipelineBuilder::Build(VkDevice device, VkRenderPass renderPass, uint
     rasterizer.lineWidth               = 1.0f;
     rasterizer.cullMode                = cullMode_;
     rasterizer.frontFace               = frontFace_;
-    rasterizer.depthBiasEnable         = VK_FALSE;
+    rasterizer.depthBiasEnable         = depthBiasEnable_ ? VK_TRUE : VK_FALSE;
+    rasterizer.depthBiasConstantFactor = depthBiasConstantFactor_;
+    rasterizer.depthBiasSlopeFactor    = depthBiasSlopeFactor_;
+    rasterizer.depthBiasClamp          = 0.0f;
 
     // マルチサンプリング (無効)
     VkPipelineMultisampleStateCreateInfo multisampling = {};
@@ -100,11 +123,17 @@ VkPipeline PipelineBuilder::Build(VkDevice device, VkRenderPass renderPass, uint
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable     = VK_FALSE;
 
-    // カラーブレンド (不透明)
+    // カラーブレンド
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                                           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable    = VK_FALSE;
+    colorBlendAttachment.blendEnable         = blendEnable_ ? VK_TRUE : VK_FALSE;
+    colorBlendAttachment.srcColorBlendFactor = blendSrcFactor_;
+    colorBlendAttachment.dstColorBlendFactor = blendDstFactor_;
+    colorBlendAttachment.colorBlendOp        = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcAlphaBlendFactor = blendSrcFactor_;
+    colorBlendAttachment.dstAlphaBlendFactor = blendDstFactor_;
+    colorBlendAttachment.alphaBlendOp        = VK_BLEND_OP_ADD;
 
     VkPipelineColorBlendStateCreateInfo colorBlending = {};
     colorBlending.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;

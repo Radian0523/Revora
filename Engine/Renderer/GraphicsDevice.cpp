@@ -69,7 +69,7 @@ void GraphicsDevice::Shutdown() {
     DestroyInstance();
 }
 
-void GraphicsDevice::BeginFrame(float r, float g, float b, float a) {
+void GraphicsDevice::BeginFrame() {
     vkWaitForFences(device_, 1, &inFlightFences_[currentFrame_], VK_TRUE, UINT64_MAX);
 
     vkAcquireNextImageKHR(device_, swapChain_, UINT64_MAX,
@@ -86,6 +86,10 @@ void GraphicsDevice::BeginFrame(float r, float g, float b, float a) {
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     vkBeginCommandBuffer(cmd, &beginInfo);
+}
+
+void GraphicsDevice::BeginMainPass(float r, float g, float b, float a) {
+    VkCommandBuffer cmd = commandBuffers_[currentFrame_];
 
     // レンダーパス開始
     VkClearValue clearValues[2] = {};

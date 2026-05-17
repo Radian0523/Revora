@@ -40,6 +40,18 @@ public:
     /// デプステストの設定
     void SetDepthTest(bool enable, bool writeEnable, VkCompareOp compareOp = VK_COMPARE_OP_LESS);
 
+    /// カラーブレンドモードを明示的に設定する
+    void SetBlendMode(bool enable, VkBlendFactor srcFactor, VkBlendFactor dstFactor);
+
+    /// 半透明ブレンド: srcAlpha / oneMinusSrcAlpha (ゴースト車両用)
+    void SetBlendModeAlpha();
+
+    /// 加算ブレンド: srcAlpha / one (パーティクルの発光表現用)
+    void SetBlendModeAdditive();
+
+    /// 深度バイアスを設定する (シャドウマップの shadow acne 防止用)
+    void SetDepthBias(bool enable, float constantFactor, float slopeFactor);
+
     /// パイプラインをビルドする
     VkPipeline Build(VkDevice device, VkRenderPass renderPass, uint32_t subpass = 0);
 
@@ -54,6 +66,16 @@ private:
     bool                                     depthTestEnable_ = true;
     bool                                     depthWriteEnable_ = true;
     VkCompareOp                              depthCompareOp_ = VK_COMPARE_OP_LESS;
+
+    // ブレンド設定
+    bool          blendEnable_    = false;
+    VkBlendFactor blendSrcFactor_ = VK_BLEND_FACTOR_ONE;
+    VkBlendFactor blendDstFactor_ = VK_BLEND_FACTOR_ZERO;
+
+    // 深度バイアス設定
+    bool  depthBiasEnable_         = false;
+    float depthBiasConstantFactor_ = 0.0f;
+    float depthBiasSlopeFactor_    = 0.0f;
 };
 
 } // namespace Revora

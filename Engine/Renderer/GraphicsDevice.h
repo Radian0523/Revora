@@ -20,7 +20,14 @@ public:
     bool Initialize(const Window& window);
     void Shutdown();
 
-    void BeginFrame(float r, float g, float b, float a);
+    /// フレーム開始: フェンス同期 + イメージ取得 + コマンドバッファ記録開始
+    /// BeginMainPass() を呼ぶまでの間にシャドウパスなど別レンダーパスを実行できる
+    void BeginFrame();
+
+    /// メインレンダーパス開始: クリアカラーを指定してメインパスを開始
+    void BeginMainPass(float r, float g, float b, float a);
+
+    /// フレーム終了: メインパス終了 + コマンド送信 + プレゼンテーション
     void EndFrame();
 
     /// テスト三角形の描画 (Phase 1 用、Phase 2 完了後に除去)
